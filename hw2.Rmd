@@ -1,0 +1,116 @@
+---
+title: "Homework 2"
+author: "Oliver Chen, Jason Sudirdjo, Yuki Yamanaka"
+date: "2023-10-21"
+output: pdf_document
+---
+```{r reg1}
+library(pacman)
+p_load(tidyverse, ggplot2)
+#Read in data
+rr <- read.csv("Rural_Roads.csv")
+#rr
+# create treatment variable
+#df <- df %>% mutate(treatment = ifelse(program == "treatment", 1, 0),
+#                    educ_enroll = ifelse(enroll98 == "yes", 1, 0))
+
+#Find Average Treatment Effect
+#ATE <- lm(educ_enroll ~ treatment, data = df)
+#summary(ATE)
+```
+Question 1: Diff in Diff Impact Evaluation
+
+a) [1 point] Descriptive statistics: What is the mean population size across all villages in the sample in 1980?
+
+44429.64
+
+```{r}
+mean1980 <- mean(rr[["Pop.1980"]], na.rm = TRUE)
+mean1980
+```
+b) [1 point] Baseline differences in means: What is the difference in population size means in 1980 between villages that would be assigned to the program in the future and those that would not?
+
+9073.219
+```{r}
+assigned <- subset(rr, rr[["Road.Investment.Ever..Treatment.group."]] == 1)
+not_assigned <- subset(rr, rr[["Road.Investment.Ever..Treatment.group."]] == 0)
+
+assigned_mean <- mean(assigned[["Pop.1980"]], na.rm = TRUE)
+not_assigned_mean <- mean(not_assigned[["Pop.1980"]], na.rm = TRUE)
+
+diff <- assigned_mean - not_assigned_mean
+diff
+```
+c) [1 point] If the program had been randomly assigned, what would you have expected as an answer in b)?
+
+0, because given a big enough dataset (according to the law of large numbers), the two randomly assigned groups should be the same in all aspects. Therefore, the difference in average population should be 0
+```{r}
+
+```
+d) [2 point] Parallel trends: Population growth between 1990 and 1980 (the two pre-treatment data rounds) is described by the variable Delta Pop 90-80 defined as: (Pop90-Pop80)/Pop80. Use a regression to determine whether population growth is different between villages that would be assigned to treatment in the future and those that would not be (the “road investment ever” variable). Does the parallel trends assumption hold?
+
+Difference is -1.383e-06 with a residual standard error of 5.283e-05, so slope is not significantly different from 0. Therefore, the parallel trends assumption holds because the population growth for both groups is the same. 
+
+```{r}
+model <- lm(rr[["Delta.pop.90.80"]] ~ rr[["Road.Investment.Ever..Treatment.group."]], data = rr)
+summary(model)
+```
+e) [2 points] Impact: Estimate the effect of road construction on village population in the period 1990-2000 by regressing the percent change in population between 1990 and 2000 against the dummy of road construction between 1990 and 2000. How much does a small city grow if it gets a road in 1990-2000 compared to all other villages in India? Show your regression output and explain.
+
+Adding a road grows a small city's population by 3.000e-01, with a residual standard error of 3.734e-05. The slope is statistically different from 0. Therefore, adding a road grows a small city's population by 0.3 percent. 
+```{r}
+model <- lm(rr[["Delta.pop.00.90"]] ~ rr[["Road.Investment.between.1990.2000"]], data = rr)
+summary(model)
+
+
+```
+f) [2 points] Impact 2: Estimate the effect of road construction on village population growth in the period 2000-2010 by regressing the percent change in population between 2000 and 2010 against the dummy of road construction between 2000 and 2010. Show your regression output and explain.
+
+Adding a road grows a small city's population by 3.000e-01, with a residual standard error of 4.525e-05. The slope is statistically different from 0. Therefore, adding a road grows a small city's population by 0.3 percent. 
+```{r}
+model <- lm(rr[["Delta.pop.10.00"]] ~ rr[["Road.Investment.between.2000.2010"]], data = rr)
+summary(model)
+```
+g) [2 points] One time changes vs permanent shifts in the growth rate: Now regress village population growth in the period 2000-2010 against road construction in the 1990-2000 period as well as road construction in the 2000-2010 period (you now have 2 explanatory variables in the regression). Is the growth rate between 2010-2000 higher in villages with roads built in 1990-2000 compared to those that never got roads? Ie, do roads have one-time or permanent effects on city growth rates? (Show your regression output and explain.)
+
+The 2000-2010 growth rate is higher than the 1990-2000 growth rate, so roads have a one-time effect on city growth rates. The coefficient for 1990-2000 is not statistically different from 0, showing that the effect is only significant in one time period. 
+
+
+```{r}
+
+model <- lm(Delta.pop.10.00 ~ Road.Investment.between.1990.2000 + Road.Investment.between.2000.2010, rr)
+summary(model)
+```
+h) [4 points] Using the diff-in-diff specification: Up to this point you have performed an
+analysis using percent changes in population and checked that these growth rates are
+correlated to road construction. When you show your results to the government, they
+say they are promising but request that you implement a diff-in-diff specification:
+
+In order to do this, you must use the data in long format (use the
+Rural_Roads_Long_Format sheet). It has the same information as Rural Roads,
+except the data are stacked on top of each other for the different years and you use log
+population instead of changes in population as your dependent variable.
+Regress log pop in city i at time t against the year dummies (1990, 2000, 2010), as
+well as Treatment Group Dummy and TreatXPost dummy. What is the regression
+coefficient you obtain on Treatment GroupXPost (i.e. the variable:
+ProgramCityXPostTreatment)? Your regression output should report a 95%
+confidence interval. Is your estimated coefficient in e) and f) contained within the
+confidence interval in h) ? Show your regression output and explain.
+
+GroupXPost coefficient: 0.25047
+95% interval = 0.25047 +- 0.03411 * 1.96 = [0.18361, 0.31733]
+
+```{r}
+rrl <- read.csv("Rural_Roads_long_format.csv")
+#rrl
+```
+```{r}
+model <- lm(log.pop ~ X1990.dummy + X2000.dummy + X2010.dummy + Road.Investment.Ever..Treatment.group.+ Treat.groupXPost.treatment, rrl)
+model
+summary(model)
+```
+i) [2 points] What do you think explains the difference in estimated coefficients
+between question h and questions e and f?
+
+The difference in coefficients between question h) and questions e) and f) is that the coefficient in h) is smaller. This is because many other variables are accounted for in h), so the effect that GroupXPost has is smaller. This illustrates that the variables in a regression can change how the effect of a single variable is perceived. 
+
